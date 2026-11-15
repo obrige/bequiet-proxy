@@ -23,14 +23,15 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY bequiet_proxy.py /app/bequiet_proxy.py
 
-# Debian already ships a legacy "proxy" group (gid 13), so the group must be
-# reused instead of created, otherwise useradd fails with "group already exists".
-RUN (getent group proxy >/dev/null 2>&1 || groupadd --system proxy) \
-    && useradd --system --uid 10001 --gid proxy --create-home --shell /usr/sbin/nologin proxy \
+# Debian's base-passwd already ships a legacy "proxy" user and group (uid/gid
+# 13), so the service account is named "bequiet" to avoid the name clash.
+# The uid stays 10001 so the host side can use it for the ./ca bind mount.
+RUN groupadd --gid 10001 bequiet \
+    && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin bequiet \
     && mkdir -p /app/ca \
-    && chown -R proxy:proxy /app
+    && chown -R bequiet:bequiet /app
 
-USER proxy
+USER bequiet
 
 EXPOSE 9090 1080
 VOLUME ["/app/ca"]
