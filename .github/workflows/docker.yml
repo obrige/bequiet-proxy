@@ -100,6 +100,9 @@ jobs:
           labels: ${{steps.meta.outputs.labels}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # GHCR 不支持 buildx 的 provenance attestation（referrers），
+          # 推送时会报 400 Bad Request，所以这里关掉。
+          provenance: false
 
       - name: 输出镜像地址 / summary
         run: |
