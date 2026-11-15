@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{github.event.repository.name}}
+  IMAGE_NAME: ${{github.repository}}
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
       - name: 准备 Python / setup python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.15'
+          python-version: '3.12'
 
       - name: 启动代理 / start the proxy
         # 发布包可能不含 tests/，此时跳过测试而不是让流水线失败
@@ -78,18 +78,15 @@ jobs:
         run: |
           set -x
           AUTH="${{github.actor}}:${{secrets.GITHUB_TOKEN}}"
-          echo "=== token scope ==="
-          curl -sS -u "$AUTH" "https://ghcr.io/token?scope=repository:bequiet-proxy:pull,push&service=ghcr.io" | head -c 1200
-          echo
-          echo "=== HEAD missing blob ==="
-          curl -sS -i -u "$AUTH" -X HEAD "https://ghcr.io/v2/bequiet-proxy/blobs/sha256:0000000000000000000000000000000000000000000000000000000000000000"
-          echo "=== HEAD missing blob (owner prefixed) ==="
-          curl -sS -i -u "$AUTH" -X HEAD "https://ghcr.io/v2/obrige/bequiet-proxy/blobs/sha256:0000000000000000000000000000000000000000000000000000000000000000" | head -12
-          echo "=== tags list ==="
-          curl -sS -i -u "$AUTH" "https://ghcr.io/v2/bequiet-proxy/tags/list" | head -c 500
-          echo
-          echo "=== docker pull/push probe ==="
-          docker buildx imagetools inspect ghcr.io/bequiet-proxy:main 2>&1 | head -20 || true
+          for REPO in bequiet-proxy obrige/bequiet-proxy; do
+            echo "########## repo=$REPO ##########"
+            code=$(curl -sS -u "$AUTH" -o /tmp/tok.json -w "%{http_code}" "https://ghcr.io/token?scope=repository:$REPO:pull,push&service=ghcr.io")
+            echo "token endpoint http=$code"
+            head -c 200 /tmp/tok.json; echo
+            TOKEN=$(sed -n 's/.*"token" *: *"\([^"]*\)".*/\1/p' /tmp/tok.json)
+            echo "token length=${#TOKEN}"
+            curl -sS -o /dev/null -D- -H "Authorization: Bearer $TOKEN" -X HEAD "https://ghcr.io/v2/$REPO/blobs/sha256:0000000000000000000000000000000000000000000000000000000000000000" | head -4
+          done
 
       - name: 计算镜像标签 / compute image tags
         id: meta
