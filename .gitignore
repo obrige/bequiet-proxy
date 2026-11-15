@@ -1,0 +1,19 @@
+# CA 目录包含私钥，绝不能提交 / the CA directory holds a private key, never commit it
+ca/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 测试与临时文件 / tests and scratch files
+crl.der
+leaf.cer
+*.log
+
+# 编辑器 / editors
+.idea/
+.vscode/
+.DS_Store

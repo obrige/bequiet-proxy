@@ -1,0 +1,40 @@
+# bequiet-proxy - HTTP + SOCKS5 proxy
+#
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+#
+# The CA is generated on first start into ./ca (bind mounted), so the host and
+# the container always use the same root certificate:
+#
+#   docker compose up -d
+#   python bequiet_proxy.py --install-ca --ca-dir ./ca     # trust it on the host
+#
+# Clients fetch the CRL over the published HTTP port, so BEQUIET_CRL_URL has to
+# point at the port the *client* uses. Change both together if you remap it:
+#
+#   set BEQUIET_HTTP_PORT=9090
+#   docker compose up -d
+#
+services:
+  bequiet-proxy:
+    build:
+      context: .
+    image: bequiet-proxy:latest
+    container_name: bequiet-proxy
+    restart: unless-stopped
+    ports:
+      - "${BEQUIET_HTTP_PORT:-9090}:9090"
+      - "${BEQUIET_SOCKS_PORT:-1080}:1080"
+    environment:
+      BEQUIET_HOST: "0.0.0.0"
+      BEQUIET_HTTP_PORT: "9090"
+      BEQUIET_SOCKS_PORT: "1080"
+      BEQUIET_CRL_URL: "http://127.0.0.1:${BEQUIET_HTTP_PORT:-9090}/bequiet-ca.crl"
+      BEQUIET_UPSTREAM: "https://bequiet.pages.dev"
+    volumes:
+      - ./ca:/app/ca
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

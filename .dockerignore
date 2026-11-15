@@ -1,0 +1,14 @@
+ca/
+
+tests/
+docs/
+*.md
+__pycache__/
+*.pyc
+.git/
+.github/
+.gitignore
+.dockerignore
+docker-compose.yml
+docker-compose.ghcr.yml
+Dockerfile

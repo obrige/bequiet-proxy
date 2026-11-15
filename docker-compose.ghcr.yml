@@ -1,0 +1,20 @@
+services:
+  bequiet-proxy:
+    image: ghcr.io/obrige/bequiet-proxy:latest
+    container_name: bequiet-proxy
+    restart: unless-stopped
+    ports:
+      - "${BEQUIET_HTTP_PORT:-9090}:9090"
+      - "${BEQUIET_SOCKS_PORT:-1080}:1080"
+    environment:
+      BEQUIET_HOST: "0.0.0.0"
+      BEQUIET_HTTP_PORT: "9090"
+      BEQUIET_SOCKS_PORT: "1080"
+      BEQUIET_CRL_URL: "http://127.0.0.1:${BEQUIET_HTTP_PORT:-9090}/bequiet-ca.crl"
+      BEQUIET_UPSTREAM: "https://bequiet.pages.dev"
+    volumes:
+      - ./ca:/app/ca
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
