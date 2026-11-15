@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{github.event.repository.name}
+  IMAGE_NAME: ${{github.event.repository.name}}
 
 permissions:
   contents: read
@@ -23,8 +23,6 @@ jobs:
   test:
     name: 测试 / test
     runs-on: ubuntu-latest
-    # 发布包可能不含 tests/，此时跳过测试而不是让流水线失败
-    if: ${{ hashFiles('tests/test.py') != '' }}
     steps:
       - name: 检出代码 / checkout
         uses: actions/checkout@v4
@@ -35,6 +33,8 @@ jobs:
           python-version: '3.12'
 
       - name: 启动代理 / start the proxy
+        # 发布包可能不含 tests/，此时跳过测试而不是让流水线失败
+        if: ${{ hashFiles('tests/test.py') != '' }}
         run: |
           python bequiet_proxy.py --http-port 9090 --socks-port 1080 --verbose &
           for i in $(seq 1 30); do
@@ -43,6 +43,7 @@ jobs:
           done
 
       - name: 运行测试 / run the tests
+        if: ${{ hashFiles('tests/test.py') != '' }}
         run: |
           python tests/test.py
           python tests/test2.py
@@ -69,15 +70,15 @@ jobs:
       - name: 登录 GHCR / login to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{env.REGISTRY}
-          username: ${{github.actor}
-          password: ${{secrets.GITHUB_TOKEN}
+          registry: ${{env.REGISTRY}}
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
 
       - name: 计算镜像标签 / compute image tags
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{env.REGISTRY}/${{env.IMAGE_NAME}
+          images: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
@@ -87,22 +88,22 @@ jobs:
           labels: |
             org.opencontainers.image.title=bequiet-proxy
             org.opencontainers.image.description=HTTP + SOCKS5 proxy in front of https://bequiet.pages.dev/fonts/<url>
-            org.opencontainers.image.source=${{github.server_url}/${{github.repository}
+            org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
 
       - name: 构建并推送 / build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{github.event_name != 'pull_request'}
-          tags: ${{steps.meta.outputs.tags}
-          labels: ${{steps.meta.outputs.labels}
+          push: ${{github.event_name != 'pull_request'}}
+          tags: ${{steps.meta.outputs.tags}}
+          labels: ${{steps.meta.outputs.labels}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: 输出镜像地址 / summary
         run: |
-          echo "### 镜像已推送 / Image pushed" >> ${{env.GITHUB_STEP_SUMMARY}
-          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}
-          echo ${{steps.meta.outputs.tags} >> ${{env.GITHUB_STEP_SUMMARY}
-          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}
+          echo "### 镜像已推送 / Image pushed" >> ${{env.GITHUB_STEP_SUMMARY}}
+          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}}
+          echo ${{steps.meta.outputs.tags}} >> ${{env.GITHUB_STEP_SUMMARY}}
+          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}}
