@@ -30,7 +30,7 @@ jobs:
       - name: 准备 Python / setup python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.15'
 
       - name: 启动代理 / start the proxy
         # 发布包可能不含 tests/，此时跳过测试而不是让流水线失败
@@ -74,6 +74,23 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
 
+      - name: 调试 GHCR / debug GHCR
+        run: |
+          set -x
+          AUTH="${{github.actor}}:${{secrets.GITHUB_TOKEN}}"
+          echo "=== token scope ==="
+          curl -sS -u "$AUTH" "https://ghcr.io/token?scope=repository:bequiet-proxy:pull,push&service=ghcr.io" | head -c 1200
+          echo
+          echo "=== HEAD missing blob ==="
+          curl -sS -i -u "$AUTH" -X HEAD "https://ghcr.io/v2/bequiet-proxy/blobs/sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          echo "=== HEAD missing blob (owner prefixed) ==="
+          curl -sS -i -u "$AUTH" -X HEAD "https://ghcr.io/v2/obrige/bequiet-proxy/blobs/sha256:0000000000000000000000000000000000000000000000000000000000000000" | head -12
+          echo "=== tags list ==="
+          curl -sS -i -u "$AUTH" "https://ghcr.io/v2/bequiet-proxy/tags/list" | head -c 500
+          echo
+          echo "=== docker pull/push probe ==="
+          docker buildx imagetools inspect ghcr.io/bequiet-proxy:main 2>&1 | head -20 || true
+
       - name: 计算镜像标签 / compute image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -100,13 +117,13 @@ jobs:
           labels: ${{steps.meta.outputs.labels}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # GHCR 不支持 buildx 的 provenance attestation（referrers），
-          # 推送时会报 400 Bad Request，所以这里关掉。
           provenance: false
 
       - name: 输出镜像地址 / summary
         run: |
-          echo "### 镜像已推送 / Image pushed" >> ${{env.GITHUB_STEP_SUMMARY}}
-          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}}
-          echo ${{steps.meta.outputs.tags}} >> ${{env.GITHUB_STEP_SUMMARY}}
-          echo '```' >> ${{env.GITHUB_STEP_SUMMARY}}
+          {
+            echo "### 镜像已推送 / Image pushed"
+            echo '```'
+            echo '${{steps.meta.outputs.tags}}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
