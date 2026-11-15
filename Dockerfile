@@ -23,7 +23,8 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY bequiet_proxy.py /app/bequiet_proxy.py
 
-RUN useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin proxy \
+RUN groupadd --system proxy \
+    && useradd --system --uid 10001 --gid proxy --create-home --shell /usr/sbin/nologin proxy \
     && mkdir -p /app/ca \
     && chown -R proxy:proxy /app
 
